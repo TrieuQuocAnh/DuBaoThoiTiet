@@ -1,41 +1,68 @@
-from sklearn.ensemble import RandomForestRegressor
+import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+from sklearn.ensemble import RandomForestClassifier
+from xgboost import XGBClassifier
+from sklearn.metrics import classification_report, f1_score, confusion_matrix
 from sklearn.preprocessing import LabelEncoder
-import joblib
-import os
 
-def run_supervised(df, config):
-    target_col = config.get('eda', {}).get('target_col', 'target')
-    if target_col not in df.columns:
-        raise ValueError(f'Target column {target_col} not found in dataframe')
+from sklearn.preprocessing import LabelEncoder
+import pandas as pd
 
-    X = df.drop(columns=[target_col], errors='ignore').select_dtypes(include=['number']).fillna(0)
-    y = df[target_col]
+def prepare_classification_data(df, config):
+    features = config['classification']['features']
+    target = config['classification']['target']
+    
+    # 1. Lọc bớt các nhãn Summary quá hiếm (dưới 100 mẫu) để tránh nhiễu
+    threshold = 100
+    counts = df[target].value_counts()
+    valid_summaries = counts[counts >= threshold].index
+    df_filtered = df[df[target].isin(valid_summaries)].copy()
+    
+    # 2. Mã hóa các biến phân loại đầu vào (như Precip Type)
+    le_precip = LabelEncoder()
+    df_filtered['Precip Type'] = le_precip.fit_transform(df_filtered['Precip Type'])
+    
+    # 3. Mã hóa nhãn Summary
+    le_target = LabelEncoder()
+    y = le_target.fit_transform(df_filtered[target])
+    X = df_filtered[features]
+    
+    return train_test_split(X, y, test_size=config['classification']['test_size'], 
+                            random_state=config['classification']['random_state']), le_target
 
-    if y.dtype == 'object' or y.dtype.name == 'category':
-        y = LabelEncoder().fit_transform(y.fillna('missing'))
-
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
-
-    model = RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=-1)
-    model.fit(X_train, y_train)
-
-    y_pred = model.predict(X_test)
-    metrics = {
-        'rmse': mean_squared_error(y_test, y_pred, squared=False),
-        'mae': mean_absolute_error(y_test, y_pred),
-        'r2': r2_score(y_test, y_pred)
-    }
-
-    print('Supervised training complete', metrics)
-    return model, metrics
+def train_classifiers(X_train, y_train, config):
+    """Huấn luyện đồng thời RF và XGBoost"""
+    rf = RandomForestClassifier(**config['classification']['models']['rf_params'])
+    rf.fit(X_train, y_train)
+    
+    xgb = XGBClassifier(**config['classification']['models']['xgb_params'])
+    xgb.fit(X_train, y_train)
+    
+    return rf, xgb
 
 
 
-def save_model(model, model_name, config, base_path="../"):
-    model_dir = os.path.join(base_path, config['outputs']['models_dir'])
-    os.makedirs(model_dir, exist_ok=True)
-    save_path = os.path.join(model_dir, f"{model_name}.pkl")
-    joblib.dump(model, save_path)
-    print(f"📦 Đã lưu model tại: {save_path}")
+def prepare_classification_data(df, config):
+    """Chuẩn bị X, y và mã hóa nhãn"""
+    features = config['classification']['features']
+    target = config['classification']['target']
+    
+    X = df[features]
+    y = df[target]
+    
+    # Mã hóa nhãn (Rain: 0, Snow: 1)
+    le = LabelEncoder()
+    y_encoded = le.fit_transform(y)
+    
+    return train_test_split(X, y_encoded, test_size=config['classification']['test_size'], 
+                            random_state=config['classification']['random_state']), le
+
+def train_classifiers(X_train, y_train, config):
+    """Huấn luyện đồng thời RF và XGBoost"""
+    rf = RandomForestClassifier(**config['classification']['models']['rf_params'])
+    rf.fit(X_train, y_train)
+    
+    xgb = XGBClassifier(**config['classification']['models']['xgb_params'])
+    xgb.fit(X_train, y_train)
+    
+    return rf, xgb

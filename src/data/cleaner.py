@@ -62,16 +62,19 @@ def discretize_features(df, config):
                                    bins=conf['visibility_bins'], labels=conf['visibility_labels'])
     return df
 
+import pandas as pd
+
 def preprocess_pipeline(df, config):
-    """Pipeline tổng hợp các bước tiền xử lý"""
-    # 1. Xóa cột thừa
-    df = df.drop(columns=config['preprocessing']['drop_cols'])
+    # 1. Xóa cột thừa (giữ lại Summary vì nó là nhãn)
+    df = df.drop(columns=['Loud Cover', 'Daily Summary'], errors='ignore')
     
-    # 2. Xử lý Missing & Outliers (Pressure)
-    df = handle_missing_values(df)
-    df = fix_pressure(df)
+    # 2. Xử lý Pressure rác (như đã làm)
+    median_p = df[df['Pressure (millibars)'] > 0]['Pressure (millibars)'].median()
+    df['Pressure (millibars)'] = df['Pressure (millibars)'].replace(0, median_p)
     
-    # 3. Rời rạc hóa (Cho bài toán Luật kết hợp)
-    df = discretize_features(df, config)
+    # 3. XỬ LÝ PRECIP TYPE: Biến Null thành 'none' (Không xóa, không điền mode)
+    df['Precip Type'] = df['Precip Type'].fillna('none')
     
+    # 4. Rời rạc hóa (cho Luật kết hợp)
+    # Giữ nguyên logic cũ nhưng nhãn bây giờ dùng cho Summary
     return df

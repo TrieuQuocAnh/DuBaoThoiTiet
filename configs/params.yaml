@@ -42,9 +42,9 @@ outputs:
   rules_filename: "association_rules_seasonal.csv"
 
 classification:
-  target: 'Summary' # Đổi nhãn ở đây
+  target: 'Precip Type' # Đổi nhãn ở đây
   # Thêm Precip Type vào feature vì nó là thông tin đầu vào quan trọng
-  features: ['Temperature (C)', 'Humidity', 'Wind Speed (km/h)', 'Pressure (millibars)', 'Visibility (km)', 'Precip Type', 'Month']
+  features: ['Temperature (C)', 'Humidity', 'Wind Speed (km/h)', 'Pressure (millibars)', 'Visibility (km)', 'Month']
   test_size: 0.2
   random_state: 42
   models:

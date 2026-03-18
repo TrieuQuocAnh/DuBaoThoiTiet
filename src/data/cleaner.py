@@ -23,11 +23,7 @@ def clean_data(df, config):
     # 2. Xử lý Pressure rác
     df = handle_pressure_outliers(df)
     
-    # 3. Xử lý Missing Values cho Precip Type
-    # Điền giá trị phổ biến nhất (mode)
-    if df['Precip Type'].isnull().any():
-        mode_val = df['Precip Type'].mode()[0]
-        df['Precip Type'] = df['Precip Type'].fillna(mode_val)
+
         
     return df
 
@@ -76,5 +72,7 @@ def preprocess_pipeline(df, config):
     df['Precip Type'] = df['Precip Type'].fillna('none')
     
     # 4. Rời rạc hóa (cho Luật kết hợp)
+    
     # Giữ nguyên logic cũ nhưng nhãn bây giờ dùng cho Summary
+    df = discretize_features(df, config)
     return df

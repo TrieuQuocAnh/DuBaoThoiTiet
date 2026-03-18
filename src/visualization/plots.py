@@ -131,24 +131,7 @@ def plot_elbow_method(k_range, inertia, silhouette_avg):
 
 import plotly.graph_objects as go
 
-def plot_cluster_radar(profile_df, features):
-    """Vẽ biểu đồ Radar để so sánh đặc điểm các cụm thời tiết"""
-    fig = go.Figure()
 
-    for i in profile_df.index:
-        fig.add_trace(go.Scatterpolar(
-            r=profile_df.loc[i, features].values,
-            theta=features,
-            fill='toself',
-            name=f'Cluster {i}'
-        ))
-
-    fig.update_layout(
-        polar=dict(radialaxis=dict(visible=True, range=[df_scaled.min().min(), df_scaled.max().max()])),
-        showlegend=True,
-        title="Hồ sơ cụm thời tiết (Cluster Profiles)"
-    )
-    fig.show()
 
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -218,3 +201,13 @@ def plot_weather_counts(df):
     fig.update_xaxes(tickangle=45, row=1, col=1)
     
     fig.show()
+
+
+
+def plot_ts_analysis(ts_data, lags=40):
+    fig, axes = plt.subplots(1, 2, figsize=(15, 4))
+    plot_acf(ts_data, lags=lags, ax=axes[0])
+    plot_pacf(ts_data, lags=lags, ax=axes[1])
+    axes[0].set_title('Biểu đồ Tự tương quan (ACF)')
+    axes[1].set_title('Biểu đồ Tự tương quan riêng phần (PACF)')
+    plt.show()    

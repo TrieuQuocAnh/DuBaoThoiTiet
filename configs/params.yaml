@@ -61,4 +61,4 @@ time_series:
   resample_period: 'D'  # Dự báo theo ngày (Daily)
   test_size: 30         # Dự báo 30 ngày cuối cùng
   arima_order: [1, 1, 1]
-  seasonal_order: [1, 1, 1, 7] # Chu kỳ tuần
+  seasonal_period: 365 # Chu kỳ tuần

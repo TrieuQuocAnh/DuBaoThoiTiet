@@ -19,3 +19,12 @@ def build_features(df, config):
         df[numeric_cols] = scaler.fit_transform(df[numeric_cols])
 
     return df
+
+
+
+def scale_features(df, features_to_scale):
+    """Chuẩn hóa dữ liệu về phân phối chuẩn (Mean=0, Std=1)"""
+    scaler = StandardScaler()
+    df_scaled = df.copy()
+    df_scaled[features_to_scale] = scaler.fit_transform(df[features_to_scale])
+    return df_scaled, scaler

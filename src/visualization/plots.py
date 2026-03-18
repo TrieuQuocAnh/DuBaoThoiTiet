@@ -85,3 +85,66 @@ def plot_scatter_matrix(df, cols, color_col='Season'):
                             opacity=0.5)
     fig.update_traces(diagonal_visible=False)
     fig.show()
+
+
+
+def plot_rules_scatter(rules, season_name):
+    """Trực quan hóa luật kết hợp bằng biểu đồ Scatter (Support vs Confidence)"""
+    if rules.empty:
+        print(f"Không có luật để vẽ cho mùa {season_name}")
+        return
+
+    # Chuyển frozenset sang string để hiển thị trên tooltip
+    plot_df = rules.copy()
+    plot_df['rule'] = plot_df['antecedents'].astype(str) + " -> " + plot_df['consequents'].astype(str)
+
+    fig = px.scatter(plot_df, x="support", y="confidence", 
+                     size="lift", color="lift",
+                     hover_data=['rule'],
+                     title=f"Association Rules Analysis - {season_name}",
+                     labels={"support": "Support (Độ phổ biến)", "confidence": "Confidence (Độ tin cậy)"},
+                     color_continuous_scale="Viridis")
+    fig.show()
+
+def plot_elbow_method(k_range, inertia, silhouette_avg):
+    """Vẽ biểu đồ Elbow và Silhouette để chọn k"""
+    fig, ax1 = plt.subplots(figsize=(10, 5))
+
+    # Vẽ đường Elbow (Inertia)
+    color = 'tab:blue'
+    ax1.set_xlabel('Số lượng cụm (k)')
+    ax1.set_ylabel('Inertia (Sum of Squares)', color=color)
+    ax1.plot(k_range, inertia, 'o-', color=color, label='Inertia')
+    ax1.tick_params(axis='y', labelcolor=color)
+
+    # Vẽ đường Silhouette (Trục y thứ 2)
+    ax2 = ax1.twinx()
+    color = 'tab:red'
+    ax2.set_ylabel('Silhouette Score', color=color)
+    ax2.plot(k_range, silhouette_avg, 's--', color=color, label='Silhouette')
+    ax2.tick_params(axis='y', labelcolor=color)
+
+    plt.title('Phương pháp Elbow & Silhouette để chọn K tối ưu')
+    fig.tight_layout()
+    plt.show()
+
+import plotly.graph_objects as go
+
+def plot_cluster_radar(profile_df, features):
+    """Vẽ biểu đồ Radar để so sánh đặc điểm các cụm thời tiết"""
+    fig = go.Figure()
+
+    for i in profile_df.index:
+        fig.add_trace(go.Scatterpolar(
+            r=profile_df.loc[i, features].values,
+            theta=features,
+            fill='toself',
+            name=f'Cluster {i}'
+        ))
+
+    fig.update_layout(
+        polar=dict(radialaxis=dict(visible=True, range=[df_scaled.min().min(), df_scaled.max().max()])),
+        showlegend=True,
+        title="Hồ sơ cụm thời tiết (Cluster Profiles)"
+    )
+    fig.show()

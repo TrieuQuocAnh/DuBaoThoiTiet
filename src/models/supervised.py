@@ -2,7 +2,8 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from sklearn.preprocessing import LabelEncoder
-
+import joblib
+import os
 
 def run_supervised(df, config):
     target_col = config.get('eda', {}).get('target_col', 'target')
@@ -29,3 +30,12 @@ def run_supervised(df, config):
 
     print('Supervised training complete', metrics)
     return model, metrics
+
+
+
+def save_model(model, model_name, config, base_path="../"):
+    model_dir = os.path.join(base_path, config['outputs']['models_dir'])
+    os.makedirs(model_dir, exist_ok=True)
+    save_path = os.path.join(model_dir, f"{model_name}.pkl")
+    joblib.dump(model, save_path)
+    print(f"📦 Đã lưu model tại: {save_path}")

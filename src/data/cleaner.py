@@ -30,3 +30,48 @@ def clean_data(df, config):
         df['Precip Type'] = df['Precip Type'].fillna(mode_val)
         
     return df
+
+
+
+def handle_missing_values(df):
+    """Xử lý giá trị thiếu cho Precip Type"""
+    if 'Precip Type' in df.columns:
+        # Điền bằng giá trị xuất hiện nhiều nhất (mode)
+        mode_val = df['Precip Type'].mode()[0]
+        df['Precip Type'] = df['Precip Type'].fillna(mode_val)
+    return df
+
+def fix_pressure(df):
+    """Thay thế áp suất bằng 0 bằng giá trị trung vị (Median)"""
+    median_p = df[df['Pressure (millibars)'] > 0]['Pressure (millibars)'].median()
+    df['Pressure (millibars)'] = df['Pressure (millibars)'].replace(0, median_p)
+    return df
+
+def discretize_features(df, config):
+    """Rời rạc hóa dữ liệu phục vụ Luật kết hợp"""
+    conf = config['preprocessing']
+    
+    # Chuyển số thành nhãn chữ
+    df['Temp_Class'] = pd.cut(df['Temperature (C)'], 
+                             bins=conf['temp_bins'], labels=conf['temp_labels'])
+    
+    df['Humidity_Class'] = pd.cut(df['Humidity'], 
+                                 bins=conf['humidity_bins'], labels=conf['humidity_labels'])
+    
+    df['Visibility_Class'] = pd.cut(df['Visibility (km)'], 
+                                   bins=conf['visibility_bins'], labels=conf['visibility_labels'])
+    return df
+
+def preprocess_pipeline(df, config):
+    """Pipeline tổng hợp các bước tiền xử lý"""
+    # 1. Xóa cột thừa
+    df = df.drop(columns=config['preprocessing']['drop_cols'])
+    
+    # 2. Xử lý Missing & Outliers (Pressure)
+    df = handle_missing_values(df)
+    df = fix_pressure(df)
+    
+    # 3. Rời rạc hóa (Cho bài toán Luật kết hợp)
+    df = discretize_features(df, config)
+    
+    return df

@@ -12,9 +12,31 @@ eda:
   numerical_cols_large: ['Pressure (millibars)']
   target_col: 'Precip Type'
 
+
 preprocessing:
   drop_cols: ['Loud Cover', 'Daily Summary']
+  # Ngưỡng chia nhiệt độ (C)
   temp_bins: [-50, 0, 15, 25, 100]
   temp_labels: ['Freezing', 'Cold', 'Warm', 'Hot']
-  humidity_bins: [0, 0.4, 0.7, 1.0]
+  # Ngưỡng chia độ ẩm
+  humidity_bins: [0, 0.4, 0.7, 1.1]
   humidity_labels: ['Dry', 'Normal', 'Wet']
+  # Ngưỡng chia tầm nhìn (km)
+  visibility_bins: [0, 5, 10, 100]
+  visibility_labels: ['Low', 'Medium', 'High']
+
+mining:
+  min_support: 0.05
+  min_threshold_lift: 1.2
+  target_seasons: ['Spring', 'Summer', 'Autumn', 'Winter']
+
+clustering:
+  features: ['Temperature (C)', 'Humidity', 'Wind Speed (km/h)', 'Pressure (millibars)']
+  n_clusters: 4  # Giả định 4 nhóm thời tiết chính
+  random_state: 42
+
+outputs:
+  mining_dir: "outputs/tables/"
+  figures_dir: "outputs/figures/"
+  models_dir: "outputs/models/"
+  rules_filename: "association_rules_seasonal.csv"

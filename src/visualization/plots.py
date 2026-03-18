@@ -5,6 +5,7 @@ from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 def plot_distributions(df, cols):
     fig, axes = plt.subplots(len(cols)//2, 2, figsize=(15, 10))
@@ -161,3 +162,59 @@ def plot_confusion_matrix(y_true, y_pred, labels, title="Ma trận nhầm lẫn"
     plt.ylabel('Thực tế')
     plt.xlabel('Dự báo')
     plt.show()
+
+def plot_weather_counts(df):
+    """
+    Vẽ biểu đồ cột so sánh số lượng các giá trị trong cột 'Summary' và 'Precip Type'
+    """
+    # 1. Chuẩn bị dữ liệu cho Summary
+    # Sắp xếp giảm dần để biểu đồ dễ nhìn hơn
+    summary_counts = df['Summary'].value_counts().reset_index()
+    summary_counts.columns = ['Value', 'Count']
+    
+    # 2. Chuẩn bị dữ liệu cho Precip Type
+    # Lưu ý: Xử lý giá trị Null nếu cần (ở đây hiển thị cả Null dưới tên 'Missing')
+    precip_counts = df['Precip Type'].fillna('Missing').value_counts().reset_index()
+    precip_counts.columns = ['Value', 'Count']
+
+    # Tạo Subplots: 1 hàng, 2 cột
+    fig = make_subplots(
+        rows=1, cols=2, 
+        subplot_titles=("Phân phối các nhãn trong Summary", "Phân phối các nhãn trong Precip Type"),
+        horizontal_spacing=0.15
+    )
+
+    # Thêm biểu đồ cho Summary (Cột 1)
+    fig.add_trace(
+        go.Bar(
+            x=summary_counts['Value'], 
+            y=summary_counts['Count'],
+            marker_color='indianred',
+            name='Summary'
+        ),
+        row=1, col=1
+    )
+
+    # Thêm biểu đồ cho Precip Type (Cột 2)
+    fig.add_trace(
+        go.Bar(
+            x=precip_counts['Value'], 
+            y=precip_counts['Count'],
+            marker_color='lightseagreen',
+            name='Precip Type'
+        ),
+        row=1, col=2
+    )
+
+    # Cập nhật giao diện (Layout)
+    fig.update_layout(
+        title_text="Thống kê số lượng giá trị trong Dataset Thời tiết",
+        template="plotly_white",
+        showlegend=False,
+        height=600
+    )
+    
+    # Xoay nhãn trục X của Summary vì có quá nhiều nhãn dài
+    fig.update_xaxes(tickangle=45, row=1, col=1)
+    
+    fig.show()

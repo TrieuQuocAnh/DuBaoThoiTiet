@@ -56,3 +56,9 @@ classification:
       learning_rate: 0.1
       max_depth: 6
 
+time_series:
+  target: 'Temperature (C)'
+  resample_period: 'D'  # Dự báo theo ngày (Daily)
+  test_size: 30         # Dự báo 30 ngày cuối cùng
+  arima_order: [1, 1, 1]
+  seasonal_order: [1, 1, 1, 7] # Chu kỳ tuần

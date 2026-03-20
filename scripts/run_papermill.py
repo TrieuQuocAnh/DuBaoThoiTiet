@@ -10,14 +10,14 @@ except ImportError:
 
 
 def run_notebook(input_nb, output_nb=None, params=None, kernel_name='python3', timeout=600):
-    input_path = Path(input_nb)
+    input_path = Path(input_nb).resolve()  # Sử dụng resolve() để lấy đường dẫn tuyệt đối
     if not input_path.exists():
         raise FileNotFoundError(f'Input notebook not found: {input_path}')
 
     if output_nb is None:
         output_path = input_path.with_name(input_path.stem + '_executed' + input_path.suffix)
     else:
-        output_path = Path(output_nb)
+        output_path = Path(output_nb).resolve()
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -25,8 +25,10 @@ def run_notebook(input_nb, output_nb=None, params=None, kernel_name='python3', t
         raise ImportError('papermill is not installed. Install via pip install papermill')
 
     print(f'Running notebook: {input_path} -> {output_path}')
+    
+   
     pm.execute_notebook(
-        input_path=str(input_path),
+        input_path=str(input_path)   ,
         output_path=str(output_path),
         parameters=params or {},
         kernel_name=kernel_name,
@@ -34,6 +36,7 @@ def run_notebook(input_nb, output_nb=None, params=None, kernel_name='python3', t
         report_mode=False,
         start_timeout=timeout,
         execution_timeout=timeout,
+        cwd=str(input_path.parent)  # Thiết lập thư mục làm việc là nơi chứa notebook
     )
 
     print('Done:', output_path)
@@ -51,10 +54,21 @@ if __name__ == '__main__':
     parser.add_argument('--timeout', type=int, default=600, help='Timeout in seconds')
     args = parser.parse_args()
 
+    # Xử lý logic nạp parameters trước khi chạy
+    params = None
+    if args.params:
+        params = json.loads(args.params)
+    elif args.params_file:
+        params_path = Path(args.params_file)
+        if not params_path.exists():
+            raise FileNotFoundError(f'Params file not found: {params_path}')
+        params = json.loads(params_path.read_text(encoding='utf-8'))
+
     if args.all:
         if args.input:
             raise ValueError('Cannot use --all and --input together')
 
+        # Tìm kiếm notebook trong các thư mục phổ biến
         candidate_dirs = [Path.cwd(), Path.cwd().parent / 'notebooks', Path.cwd() / 'notebooks']
         notebooks = []
         for d in candidate_dirs:
@@ -65,35 +79,26 @@ if __name__ == '__main__':
             raise FileNotFoundError('No .ipynb notebooks found in current or notebooks folders')
 
         for nb in notebooks:
-            print(f'Running notebook: {nb}')
+            # Bỏ qua các file đã execute để tránh vòng lặp vô tận nếu lưu cùng chỗ
+            if '_executed' in nb.name:
+                continue
             run_notebook(str(nb), args.output, params=params, kernel_name=args.kernel, timeout=args.timeout)
         print(f'Completed all {len(notebooks)} notebook(s).')
         exit(0)
 
     if args.input is None:
-        # try to auto-detect a notebook in common locations
         candidate_dirs = [Path.cwd(), Path.cwd().parent / 'notebooks', Path.cwd() / 'notebooks']
         found = None
         for d in candidate_dirs:
             if d.exists() and d.is_dir():
-                notebooks = sorted(d.glob('*.ipynb'))
+                notebooks = sorted([n for n in d.glob('*.ipynb') if '_executed' not in n.name])
                 if notebooks:
                     found = notebooks[0]
                     break
         if found is None:
-            raise FileNotFoundError('No notebook input provided and no .ipynb found in current/../notebooks')
+            raise FileNotFoundError('No notebook input provided and no .ipynb found')
 
         print(f"No --input provided. Auto-selected notebook: {found}")
         args.input = str(found)
 
-    params = None
-    if args.params:
-        params = json.loads(args.params)
-    elif args.params_file:
-        params_path = Path(args.params_file)
-        if not params_path.exists():
-            raise FileNotFoundError(f'Params file not found: {params_path}')
-        params = json.loads(params_path.read_text(encoding='utf-8'))
-
     run_notebook(args.input, args.output, params=params, kernel_name=args.kernel, timeout=args.timeout)
-

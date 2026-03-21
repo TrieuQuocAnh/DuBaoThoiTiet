@@ -8,11 +8,11 @@ try:
 except ImportError:
     pm = None
 
-
 def run_notebook(input_nb, output_nb=None, params=None, kernel_name='python3', timeout=600):
-    input_path = Path(input_nb).resolve()  # Sử dụng resolve() để lấy đường dẫn tuyệt đối
+    input_path = Path(input_nb).resolve()
     if not input_path.exists():
-        raise FileNotFoundError(f'Input notebook not found: {input_path}')
+        print(f"  [!] Không tìm thấy file: {input_path}")
+        return False
 
     if output_nb is None:
         output_path = input_path.with_name(input_path.stem + '_executed' + input_path.suffix)
@@ -22,83 +22,60 @@ def run_notebook(input_nb, output_nb=None, params=None, kernel_name='python3', t
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     if pm is None:
-        raise ImportError('papermill is not installed. Install via pip install papermill')
+        raise ImportError('papermill is not installed. Install via: pip install papermill')
 
-    print(f'Running notebook: {input_path} -> {output_path}')
-    
-   
-    pm.execute_notebook(
-        input_path=str(input_path)   ,
-        output_path=str(output_path),
-        parameters=params or {},
-        kernel_name=kernel_name,
-        progress_bar=True,
-        report_mode=False,
-        start_timeout=timeout,
-        execution_timeout=timeout,
-        cwd=str(input_path.parent)  # Thiết lập thư mục làm việc là nơi chứa notebook
-    )
-
-    print('Done:', output_path)
-    return str(output_path)
-
+    print(f"\n>>> Đang thực thi: {input_path.name}")
+    try:
+        pm.execute_notebook(
+            input_path=str(input_path),
+            output_path=str(output_path),
+            parameters=params or {},
+            kernel_name=kernel_name,
+            progress_bar=True,
+            report_mode=False,
+            start_timeout=timeout,
+            execution_timeout=timeout,
+            cwd=str(input_path.parent) # Giữ working directory tại folder notebooks
+        )
+        print(f"--- Hoàn thành: {output_path.name}")
+        return True
+    except Exception as e:
+        print(f"--- LỖI khi chạy {input_path.name}: {e}")
+        return False
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Run a notebook via papermill')
-    parser.add_argument('--input', '-i', required=False, default=None, help='Input notebook path (optional)')
-    parser.add_argument('--output', '-o', default=None, help='Output notebook path')
-    parser.add_argument('--all', action='store_true', help='Run all notebooks in the project (notebooks folder)')
-    parser.add_argument('--params', '-p', default=None, help='JSON string of parameters')
-    parser.add_argument('--params-file', default=None, help='JSON file with parameters')
-    parser.add_argument('--kernel', default='python3', help='Kernel name')
-    parser.add_argument('--timeout', type=int, default=600, help='Timeout in seconds')
+    parser = argparse.ArgumentParser(description='Chạy hàng loạt Notebooks')
+    parser.add_argument('--dir', default='notebooks', help='Thư mục chứa notebooks')
+    parser.add_argument('--kernel', default='python3', help='Tên Kernel')
     args = parser.parse_args()
 
-    # Xử lý logic nạp parameters trước khi chạy
-    params = None
-    if args.params:
-        params = json.loads(args.params)
-    elif args.params_file:
-        params_path = Path(args.params_file)
-        if not params_path.exists():
-            raise FileNotFoundError(f'Params file not found: {params_path}')
-        params = json.loads(params_path.read_text(encoding='utf-8'))
+    # 1. Xác định thư mục notebooks
+    project_root = Path(__file__).parent.parent # Giả định script nằm trong thư mục 'scripts/'
+    nb_dir = project_root / args.dir
+    
+    if not nb_dir.exists():
+        # Nếu không tìm thấy theo cấu trúc dự án, thử tìm ở thư mục hiện tại
+        nb_dir = Path.cwd() / args.dir
 
-    if args.all:
-        if args.input:
-            raise ValueError('Cannot use --all and --input together')
+    if not nb_dir.exists() or not nb_dir.is_dir():
+        print(f"Lỗi: Không tìm thấy thư mục '{args.dir}' tại {nb_dir}")
+        exit(1)
 
-        # Tìm kiếm notebook trong các thư mục phổ biến
-        candidate_dirs = [Path.cwd(), Path.cwd().parent / 'notebooks', Path.cwd() / 'notebooks']
-        notebooks = []
-        for d in candidate_dirs:
-            if d.exists() and d.is_dir():
-                notebooks.extend(sorted(d.glob('*.ipynb')))
+    # 2. Lấy danh sách các file .ipynb (loại trừ các file đã thực thi)
+    notebooks = sorted([f for f in nb_dir.glob("*.ipynb") if "_executed" not in f.name])
 
-        if not notebooks:
-            raise FileNotFoundError('No .ipynb notebooks found in current or notebooks folders')
-
-        for nb in notebooks:
-            # Bỏ qua các file đã execute để tránh vòng lặp vô tận nếu lưu cùng chỗ
-            if '_executed' in nb.name:
-                continue
-            run_notebook(str(nb), args.output, params=params, kernel_name=args.kernel, timeout=args.timeout)
-        print(f'Completed all {len(notebooks)} notebook(s).')
+    if not notebooks:
+        print(f"Không tìm thấy file .ipynb nào trong {nb_dir}")
         exit(0)
 
-    if args.input is None:
-        candidate_dirs = [Path.cwd(), Path.cwd().parent / 'notebooks', Path.cwd() / 'notebooks']
-        found = None
-        for d in candidate_dirs:
-            if d.exists() and d.is_dir():
-                notebooks = sorted([n for n in d.glob('*.ipynb') if '_executed' not in n.name])
-                if notebooks:
-                    found = notebooks[0]
-                    break
-        if found is None:
-            raise FileNotFoundError('No notebook input provided and no .ipynb found')
+    print(f"Tìm thấy {len(notebooks)} notebooks. Bắt đầu chạy lần lượt...")
 
-        print(f"No --input provided. Auto-selected notebook: {found}")
-        args.input = str(found)
+    # 3. Chạy vòng lặp
+    success_count = 0
+    for nb in notebooks:
+        if run_notebook(nb, kernel_name=args.kernel):
+            success_count += 1
 
-    run_notebook(args.input, args.output, params=params, kernel_name=args.kernel, timeout=args.timeout)
+    print("\n" + "="*30)
+    print(f"TỔNG KẾT: Thành công {success_count}/{len(notebooks)}")
+    print("="*30)
